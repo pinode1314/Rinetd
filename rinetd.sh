@@ -120,6 +120,36 @@ delete_rule() {
     echo -e "${GREEN}✅ rinetd 服务已重启完成。${NC}"
 }
 
+# 批量修改所有规则的内网 IP
+batch_update_ip() {
+    echo ""
+    echo "--- 批量修改内网 IP ---"
+    if [ ! -f "$RINETD_CONF" ] || [ ! -s "$RINETD_CONF" ]; then
+        echo -e "${YELLOW}当前没有任何转发规则可修改。${NC}"
+        return
+    fi
+
+    show_rules
+    read -p "请输入要替换的【旧内网 IP】(可留空跳过精确匹配，直接把所有规则的目标 IP 替换): " old_ip
+    read -p "请输入要更换的新内网 IP: " new_ip
+
+    if [ -z "$new_ip" ]; then
+        echo -e "${RED}❌ 新内网 IP 不能为空！${NC}"
+        return
+    fi
+
+    if [ -z "$old_ip" ]; then
+        awk -v nip="$new_ip" '{ $3 = nip; print }' "$RINETD_CONF" > "${RINETD_CONF}.tmp" && mv "${RINETD_CONF}.tmp" "$RINETD_CONF"
+    else
+        awk -v oip="$old_ip" -v nip="$new_ip" '{ if ($3 == oip) $3 = nip; print }' "$RINETD_CONF" > "${RINETD_CONF}.tmp" && mv "${RINETD_CONF}.tmp" "$RINETD_CONF"
+    fi
+
+    echo -e "${GREEN}✅ 批量修改内网 IP 成功！正在重启 rinetd 服务...${NC}"
+    systemctl restart $SERVICE_NAME
+    echo -e "${GREEN}✅ rinetd 服务已重启完成，最新规则如下：${NC}"
+    show_rules
+}
+
 # 交互主菜单
 while true; do
     echo ""
@@ -130,16 +160,17 @@ while true; do
     echo "2. 查看当前转发规则"
     echo "3. 添加转发规则"
     echo "4. 删除转发规则"
-    echo "5. 卸载 rinetd"
+    echo "5. 批量修改内网 IP"
+    echo "6. 卸载 rinetd"
     echo "0. 退出脚本"
     echo "========================================="
-    read -p "请选择操作 [0-5]: " choice
+    read -p "请选择操作 [0-6]: " choice
 
     case $choice in
         1)
             if check_installed; then
                 echo -e "${RED}⚠️ 检测到系统中已经安装过 rinetd！${NC}"
-                echo -e "${RED}❌ 请先选择【5. 卸载 rinetd】将其卸载后，再进行全新安装。${NC}"
+                echo -e "${RED}❌ 请先选择【6. 卸载 rinetd】将其卸载后，再进行全新安装。${NC}"
                 continue
             fi
 
@@ -217,6 +248,13 @@ SERVICE
             delete_rule
             ;;
         5)
+            if ! check_installed; then
+                echo -e "${RED}❌ 错误：rinetd 尚未安装，请先选择 1 进行安装！${NC}"
+                continue
+            fi
+            batch_update_ip
+            ;;
+        6)
             uninstall_rinetd
             ;;
         0)
