@@ -143,24 +143,20 @@ while true; do
                 continue
             fi
 
-            echo "--- 1. 正在安装依赖 ---"
-            apt update
-            apt install -y make gcc wget tar pkg-config autoconf automake
-
-            echo "--- 2. 下载并解压 rinetd ---"
+            echo "--- 1. 下载并解压 rinetd ---"
             if [ ! -d "rinetd-0.70" ]; then
                 wget https://github.com/samhocevar/rinetd/releases/download/v0.70/rinetd-0.70.tar.gz
                 tar xf rinetd-0.70.tar.gz
             fi
             cd rinetd-0.70
 
-            echo "--- 3. 编译安装 ---"
+            echo "--- 2. 编译安装 ---"
             ./bootstrap
             ./configure
             make && make install
             cd ..
 
-            echo "--- 4. 配置默认转发规则 ---"
+            echo "--- 3. 配置默认转发规则 ---"
             mkdir -p /usr/local/etc
             cat << 'CONFIG' > "$RINETD_CONF"
 0.0.0.0      31400       10.8.0.2      31400
@@ -178,7 +174,7 @@ while true; do
 0.0.0.0      30300       10.8.0.2      30300
 CONFIG
 
-            echo "--- 5. 创建 Systemd 服务 ---"
+            echo "--- 4. 创建 Systemd 服务 ---"
             cat << 'SERVICE' > /etc/systemd/system/${SERVICE_NAME}.service
 [Unit]
 Description=rinetd
@@ -194,7 +190,7 @@ ExecStop=/bin/kill -SIGINT $MAINPID
 WantedBy=multi-user.target
 SERVICE
 
-            echo "--- 6. 启动服务并设置开机自启 ---"
+            echo "--- 5. 启动服务并设置开机自启 ---"
             systemctl daemon-reload
             systemctl enable $SERVICE_NAME
             systemctl restart $SERVICE_NAME
