@@ -120,7 +120,7 @@ delete_rule() {
     echo -e "${GREEN}✅ rinetd 服务已重启完成。${NC}"
 }
 
-# 批量修改所有规则的内网 IP
+# 批量修改所有规则的内网 IP（修改后会自动重启服务）
 batch_update_ip() {
     echo ""
     echo "--- 批量修改内网 IP ---"
@@ -144,7 +144,7 @@ batch_update_ip() {
         awk -v oip="$old_ip" -v nip="$new_ip" '{ if ($3 == oip) $3 = nip; print }' "$RINETD_CONF" > "${RINETD_CONF}.tmp" && mv "${RINETD_CONF}.tmp" "$RINETD_CONF"
     fi
 
-    echo -e "${GREEN}✅ 批量修改内网 IP 成功！正在重启 rinetd 服务...${NC}"
+    echo -e "${GREEN}✅ 批量修改内网 IP 成功！正在自动重启 rinetd 服务...${NC}"
     systemctl restart $SERVICE_NAME
     echo -e "${GREEN}✅ rinetd 服务已重启完成，最新规则如下：${NC}"
     show_rules
