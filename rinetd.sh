@@ -21,6 +21,49 @@ history -c
 RINETD_CONF="/usr/local/etc/rinetd.conf"
 SERVICE_NAME="rinetd"
 
+# 智能检测并安装编译依赖（兼容多系统，已安装则跳过）
+install_dependencies() {
+    echo "--- 正在检查编译依赖 ---"
+    
+    # 检查核心命令和头文件是否齐全
+    if command -v gcc &> /dev/null && command -v make &> /dev/null && command -v autoconf &> /dev/null && command -v automake &> /dev/null; then
+        if [ -f /etc/debian_version ] && ! dpkg -s libbsd-dev &> /dev/null; then
+            # Debian/Ubuntu 缺失 libbsd-dev
+            need_install=1
+        elif [ -f /etc/alpine-release ] && ! apk info -e libbsd-dev &> /dev/null; then
+            # Alpine 缺失 libbsd-dev
+            need_install=1
+        else
+            echo -e "${GREEN}✅ 检测到所有编译依赖已完整安装，跳过依赖安装步骤。${NC}"
+            return 0
+        fi
+    else
+        need_install=1
+    fi
+
+    if [ "$need_install" -eq 1 ]; then
+        echo "--- 部分依赖缺失，开始自动安装 ---"
+        if [ -f /etc/redhat-release ]; then
+            # CentOS / RHEL / Fedora / Rocky Linux
+            if command -v dnf &> /dev/null; then
+                dnf install -y gcc make autoconf automake wget tar
+            else
+                yum install -y gcc make autoconf automake wget tar
+            fi
+        elif [ -f /etc/debian_version ]; then
+            # Debian / Ubuntu / Armbian
+            apt-get update -y
+            apt-get install -y gcc make autoconf automake wget tar libbsd-dev
+        elif [ -f /etc/alpine-release ]; then
+            # Alpine Linux
+            apk update
+            apk add gcc make autoconf automake wget tar libbsd-dev musl-dev
+        else
+            echo -e "${YELLOW}⚠️ 未知的 Linux 发行版，跳过自动安装依赖，请确保已手动安装 gcc、make、autoconf 等编译工具。${NC}"
+        fi
+    fi
+}
+
 # 卸载函数
 uninstall_rinetd() {
     echo "--- 正在卸载 rinetd ---"
@@ -189,6 +232,9 @@ while true; do
                 echo -e "${RED}❌ 请先选择【7. 卸载 rinetd】将其卸载后，再进行全新安装。${NC}"
                 continue
             fi
+
+            # 调用智能依赖检测与安装函数
+            install_dependencies
 
             echo "--- 1. 下载并解压 rinetd ---"
             if [ ! -d "rinetd-0.70" ]; then
