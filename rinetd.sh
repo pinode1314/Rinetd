@@ -34,6 +34,21 @@ uninstall_rinetd() {
     exit 0
 }
 
+# 重启函数
+restart_rinetd() {
+    if ! check_installed; then
+        echo -e "${RED}❌ 错误：rinetd 尚未安装，无法重启！${NC}"
+        return
+    fi
+    echo "--- 正在重启 rinetd 服务 ---"
+    systemctl restart $SERVICE_NAME
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}✅ rinetd 服务已成功重启！${NC}"
+    else
+        echo -e "${RED}❌ rinetd 服务重启失败，请检查配置或日志。${NC}"
+    fi
+}
+
 # 检查是否已经安装过
 check_installed() {
     if [ -f /usr/local/sbin/rinetd ] || [ -f /etc/systemd/system/${SERVICE_NAME}.service ]; then
@@ -156,21 +171,22 @@ while true; do
     echo "========================================="
     echo "        Rinetd 端口转发管理脚本"
     echo "========================================="
-    echo "1. 安装 rinetd (包含默认端口配置)"
+    echo "1. 安装 rinetd (默认转发端口31400-31409至ip10.8.0.2,openvpn适用)"
     echo "2. 查看当前转发规则"
     echo "3. 添加转发规则"
     echo "4. 删除转发规则"
     echo "5. 批量修改内网 IP"
-    echo "6. 卸载 rinetd"
+    echo "6. 重启 rinetd 服务"
+    echo "7. 卸载 rinetd"
     echo "0. 退出脚本"
     echo "========================================="
-    read -p "请选择操作 [0-6]: " choice
+    read -p "请选择操作 [0-7]: " choice
 
     case $choice in
         1)
             if check_installed; then
                 echo -e "${RED}⚠️ 检测到系统中已经安装过 rinetd！${NC}"
-                echo -e "${RED}❌ 请先选择【6. 卸载 rinetd】将其卸载后，再进行全新安装。${NC}"
+                echo -e "${RED}❌ 请先选择【7. 卸载 rinetd】将其卸载后，再进行全新安装。${NC}"
                 continue
             fi
 
@@ -255,6 +271,9 @@ SERVICE
             batch_update_ip
             ;;
         6)
+            restart_rinetd
+            ;;
+        7)
             uninstall_rinetd
             ;;
         0)
